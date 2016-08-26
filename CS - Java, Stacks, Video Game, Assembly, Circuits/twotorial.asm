@@ -1,0 +1,63 @@
+;;===============================
+;;Name:Stephanie Remy
+;;===============================
+
+.orig x3000
+
+	LD R6, STACK			; load the stack pointer
+
+	LD R0, N				; R0 = N
+	ADD R6, R6, -1			; push argument N on stack
+	STR R0, R6, 0			
+
+	JSR TWOTORIAL
+
+	LDR R0, R6, 0			; load return value off top of stack
+	ADD R6, R6, 2 			; restore stack to previous value
+
+	ST R0, ANSWER			; store answer
+	HALT
+
+N 		.fill 10
+ANSWER 	.blkw 1
+STACK 	.fill xF000
+
+
+TWOTORIAL
+	ADD R6, R6,-1; MOVE UP STACK 3 SPOTS
+	ADD R6, R6, -1;
+	ADD R6, R6,-1
+	STR R7,R6, 1; STORE RETURN ADDRESS
+	STR R5, R6, 0; STORE OLD FRAME POINTER
+	ADD R5, R6, -1;SET NEW FRAME POINTER
+	ADD R6, R6,-1;ALLOCATESPACE FOR 1 LOCAL
+	LDR R0, R5, 4; LOAD N
+	STR R0, R5, 0; STORE N AS A LOCAL
+	;CONDITIONS
+	BRp ELSE
+	;IF N <= 0
+	AND R2, R2, 0; R2 = 0
+	STR R2, R5,3;STORE 0 AS RETURN VALUE
+	BR RETURN;GOTO RETURN PART
+
+ELSE
+	AND R3, R3, 0; CLEAR OUT TEMP
+	ADD R3, R0,-2;R3 = N - 2
+	ADD R6, R6, -1; ALLOCATE SPACE FOR ARGUMENT
+	STR R3, R6,0; PUSH N -2 ONTO STACK
+	JSR TWOTORIAL
+	;QUESTION IF NEXT LINE RIGHT
+	LDR R0, R6, 0; READ RETURN VALUE OFF THE TOP OF STACK
+	ADD R6, R6, 2; POP ANSWER OFF OF STACK
+	LDR R1, R5, 0; GET OLD N (LOCAL VAR)
+	ADD R0, R0, R1; RETURN N +TWOTORIAL(N-2)
+	STR R0, R5, 3; STORE RETURN VALUE
+	
+
+RETURN
+	ADD R6, R5, 3; STACKPOINTER ON RV
+	LDR R7, R5, 2; RESTORE R7 RETURN ADDRESS
+	LDR R5, R5, 1; RESTORE OFP
+	RET; RETURN
+	
+.end

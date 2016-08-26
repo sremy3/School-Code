@@ -1,0 +1,1098 @@
+<!DOCTYPE html>
+<meta charset="utf-8">
+<head>
+
+<meta charset="utf-8">
+<link rel="stylesheet" href="d3.slider.css" /> 
+<link type="text/css" href="jquery.jscrollpane.css" rel="stylesheet" media="all" />
+<style>
+.dot {
+  stroke: #000;
+}
+.viewport {
+  overflow-y: auto;
+  background-color: #e8e8e8;
+  border: 1px solid #AAAAAA;
+  border-radius: 4px;
+  box-shadow: inset 1px 1px 6px 2px rgba(0,0,0, .25);}
+body {
+  font: 11px sans-serif;
+}
+p {
+  font: 11px sans-serif;
+}
+.viewport2 {
+  background-color: #e8e8e8;
+  border: 1px solid #AAAAAA;
+  border-radius: 4px;
+  box-shadow: inset 1px 1px 6px 2px rgba(0,0,0, .25);}
+path.link {
+  fill: none;
+  stroke: #666;
+  stroke-width: 1.5px;}
+circle {
+  stroke: #000;}
+text {
+  fill: #000;
+  font: 10px sans-serif;
+  pointer-events: none;}
+.tooltip {
+  position: absolute;
+  width: auto;
+  height: auto;
+  background: lightsteelblue;
+  pointer-events: none;}
+.axis path,
+.axis line {
+  fill: none;
+  stroke: #000;
+  shape-rendering: crispEdges;
+}
+line {
+  stroke: rgba(96, 96, 96,.3);
+}
+h2 {
+  font-size: 1.2em;
+  margin: 0px 0 0px 0;}
+.wrapper div {
+  margin: 35px 0;}
+.wrapper {
+  width: 625px;
+  position: absolute;
+  top: 10px; 
+  right: 520px;
+  margin-left: auto;
+  margin-right: auto;}
+.dot {
+  stroke: #000;}
+.filter_options div {
+  margin: 35px 0;}
+.filter options{
+  width: 100px;
+  margin-left: auto;
+  margin-right: auto;
+  overflow: auto;}
+</style>
+</head>
+<script src="http://d3js.org/d3.v3.min.js"></script>
+<script src="virtualscroller.js"></script>
+<script src="d3.slider.js"></script>
+<div class="wrapper" >
+  <h2 align="center">Year Range</h2>
+  <div id="slider"></div>
+</div>
+//TOP BUFFER
+<div id="buff"></div>
+
+/* SVG CANVASES */
+<div id="area1"></div>
+<div id="area2"></div>
+
+/* COLLABORATION LABEL, OPTION, INPUT */
+<label for="options" style="display: inline-block; width: 240px; position: absolute; top: 62px; right: 200px; text-align: right">
+Collab Level:<span id="name1"></span>
+</label>
+
+<select style="position: absolute; top: 59px; right: 135px; width:50px; text-align: center" id="collabinput"> <option value="1" selected="selected">>=</option> <option value="2"><=</option></select>
+
+<p style="position: absolute; top: 47px; right: 100px; width:5px; text-align: center">
+  <input type="number" min="0" max="360" step="1" value="0" id="collabNum" >
+</p>
+/* HINDEX LABEL, OPTION, INPUT */
+<label for="options" style="display: inline-block; width: 240px; position: absolute; top: 87px; right: 200px; text-align: right">
+h-Index :<span id="name2"></span>
+</label>
+
+<select style="position: absolute; top: 87px; right: 135px; width:50px; text-align: center" id="hindexinput"> <option value="1" selected="selected">>=</option> <option value="2"><=</option></select>
+
+<p style="position: absolute; top: 82px; right: 100px; width:5px; text-align: center">
+<input type="number" min="0" max="360" step="1" value="0" id="hindexNum">
+</p>
+
+/* LABELS */
+<label for="options" style="display: inline-block; width: 240px; position: absolute; top: 20px; right: 115px; text-align: right; font-size: 2em;">
+Filter<span id="name3"></span>
+</label>
+
+/* BUTTONS */
+<div id="option">
+<input name="updateButton" type="button" id="updateButton" value="Transpose"  style="position: absolute; top: 122px; right: 100px; text-align: center"/>
+</div>
+<div class="play">
+	<input type="image" src="submit.jpg" width="48" height="48" style="position: absolute; top: 40px; left: 100px;" id="playButton">
+</div>
+
+/* VIEWPORT SCROLLBARS */
+<div class="viewport2" style="position: absolute;top: 200px;right: 19px; width: 250px; height: 240px;">
+  <div id="firstOne" ></div>
+</div>
+<div class="viewport" style="position: absolute;top: 560px;right: 19px; width: 250px; height: 300px;">
+  <div id="secondOne" ></div>
+</div>
+/*viewPort Top Info*/
+<label for="options" style="display: inline-block; width: 300px; position: absolute; top: 475px; right: -5px; text-align: center; font-size: 1.6em; overflow: ">
+  Author: <span id="author"></span>
+</label>
+<label for="options" style="display: inline-block; width: 240px; position: absolute; top: 520px; right: 110px; text-align: right; font-size: 1.3em;">
+  Focus: <span id="focus"></span>
+</label>
+<label for="options" style="display: inline-block; width: 240px; position: absolute; top: 520px; right: 20px; text-align: left; font-size: 1.3em;">
+  h-Index: <span id="index"></span>
+</label>
+
+<body>
+<script>
+//SETUP GLOBAL VARIABLES;
+var collabGreaterThan = 1;
+var hindexGreaterThan = 1;
+var collabNumber = 0;
+var hindexNumber = 0;
+var YEAR = 2000;
+document.getElementById('author').innerHTML = ("Click Point For Display");
+
+//CREATE THE TWO CANVASS AND SETUP BORDERS
+var border = 12;
+var bordercolor = 'black';
+var width = 1050,
+    height = 370;
+var margin = {top: -30, right: 20, bottom: 00, left: 45};
+
+var top = d3.select("#buff").append("svg")
+    .attr("width", width)
+    .attr("height", 100)
+	.attr("border",border);
+
+var svg = d3.select("#area1").append("svg")
+    .attr("width", width)
+    .attr("height", height);
+
+var borderPath = svg.append("rect")
+	.attr("x", 0)
+	.attr("y", 0)
+	.attr("height", height)
+	.attr("width", width)
+	.style("stroke", bordercolor)
+	.style("fill", "none")
+	.style("stroke-width", border);
+
+var secondSVG = d3.select("#area2").append("svg")
+    .attr("width", width)
+    .attr("height", height)
+	.append("g")
+	.attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+var borderPath2 = secondSVG.append("rect")
+	.attr("x", -margin.left)
+	.attr("y", -margin.top)
+	.attr("height", height)
+	.attr("width", width)
+	.style("stroke", bordercolor)
+	.style("fill", "none")
+	.style("stroke-width", border);
+
+//PUT TOOLTIP OVER WHOLE BODY
+var tooltip = d3.select("body").append("div")
+	.attr("class", "tooltip")
+	.style("opacity", 0);
+
+// get the data
+d3.csv("nodes.csv", function(error, data) {
+d3.csv("edges.csv", function(error, links) {
+
+//SET UP NODES INFO INTO OBJECT NODES
+var nodes = {};
+var linksByYear = [[],[],[],[],[],[],[],[],[],[],[],[],[],[],[]];
+var nodesByYear = [{},{},{},{},{},{},{},{},{},{},{},{},{},{},{}];
+var firstTime = false;
+
+// Compute the distinct nodes from the links and organize by years.
+links.forEach(function(link) {
+    link.source = nodes[link.source] || 
+        (nodes[link.source] = {name: link.source});
+    link.target = nodes[link.target] || 
+        (nodes[link.target] = {name: link.target});
+    link.Collab_Total = +link.Collab_Total;
+	link.Year = +link.Year;
+	var index = +link["Year"] - 2000;
+	linksByYear[index].push(link);
+});
+
+//SETUP PROPERTIES OF THE NODES
+data.forEach(function(n){
+	//check to see if author already exists or not
+	if(!nodes.hasOwnProperty(n["Author"])){
+		nodes[n["Author"]] = {name: n["Author"]};
+	}
+	nodes[n["Author"]].hindex = +n["hIndex_Total"];
+	nodes[n["Author"]].dindex = +n["Degree_Total"];
+	nodes[n["Author"]].visibleOrNot = false;
+	 if (!nodes[n["Author"]].hasOwnProperty('pubs')){
+		var p = [];
+		var obj ={
+			title: n["Title"],
+			year: +n["Year"], 
+			journal: n["Journal"],
+			volume: n["Volume"],
+			issue: n["Issue"],
+			startPage: n["StartPage"],
+			affiliation: n["Affiliation"],
+			keywords: n["Keywords"],
+			numCitations: +n["NumCitations"]
+		};
+		p.push(obj);
+		nodes[n["Author"]].pubs = p;
+		nodes[n["Author"]].pubNum = 1;
+		//organize by year
+		var theYear = +obj["year"];
+		switch(theYear){
+			case 2000:
+				nodes[n["Author"]].year2000 = true;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+
+				break;
+			case 2001:
+				nodes[n["Author"]].year2001 = true;
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+
+				break;
+			case 2002:
+				nodes[n["Author"]].year2002 = true;
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+
+				break;
+			case 2003:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = true;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2004:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = true;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2005:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = true;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2006:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = true;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2007:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = true;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2008:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = true;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2009:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = true;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2010:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = true;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2011:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = true;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2012:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = true;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2013:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = true;
+				nodes[n["Author"]].year2014 = false;
+				break;
+			case 2014:
+				nodes[n["Author"]].year2000 = false;
+				nodes[n["Author"]].year2001 = false;
+				nodes[n["Author"]].year2002 = false;
+				nodes[n["Author"]].year2003 = false;
+				nodes[n["Author"]].year2004 = false;
+				nodes[n["Author"]].year2005 = false;
+				nodes[n["Author"]].year2006 = false;
+				nodes[n["Author"]].year2007 = false;
+				nodes[n["Author"]].year2008 = false;
+				nodes[n["Author"]].year2009 = false;
+				nodes[n["Author"]].year2010 = false;
+				nodes[n["Author"]].year2011 = false;
+				nodes[n["Author"]].year2012 = false;
+				nodes[n["Author"]].year2013 = false;
+				nodes[n["Author"]].year2014 = true;
+				break;
+			default:
+				console.log("Doesn't have a year");
+				break;
+		}
+	} else {
+		var p = nodes[n["Author"]].pubs;
+		var temp ={
+			title: n["Title"],
+			year: +n["Year"], 
+			journal: n["Journal"],
+			volume: n["Volume"],
+			issue: n["Issue"],
+			startPage: n["StartPage"],
+			affiliation: n["Affiliation"],
+			keywords: n["Keywords"],
+			numCitations: +n["NumCitations"]
+		};
+		p.push(temp);
+		nodes[n["Author"]].pubs = p;
+		var pub = nodes[n["Author"]].pubNum;
+		pub++;
+		nodes[n["Author"]].pubNum = pub;
+		//organize by year
+		var nextYear = +temp["year"];
+		switch(nextYear){
+			case 2000:
+				nodes[n["Author"]].year2000 = true;
+				break;
+			case 2001:
+				nodes[n["Author"]].year2001 = true;
+				break;
+			case 2002:
+				nodes[n["Author"]].year2002 = true;
+				break;
+			case 2003:
+				nodes[n["Author"]].year2003 = true;
+				break;
+			case 2004:
+				nodes[n["Author"]].year2004 = true;
+				break;
+			case 2005:
+				nodes[n["Author"]].year2005 = true;
+				break;
+			case 2006:
+				nodes[n["Author"]].year2006 = true;
+				break;
+			case 2007:
+				nodes[n["Author"]].year2007 = true;
+				break;
+			case 2008:
+				nodes[n["Author"]].year2008 = true;
+				break;
+			case 2009:
+				nodes[n["Author"]].year2009 = true;
+				break;
+			case 2010:
+				nodes[n["Author"]].year2010 = true;
+				break;
+			case 2011:
+				nodes[n["Author"]].year2011 = true;
+				break;
+			case 2012:
+				nodes[n["Author"]].year2012 = true;
+				break;
+			case 2013:
+				nodes[n["Author"]].year2013 = true;
+				break;
+			case 2014:
+				nodes[n["Author"]].year2014 = true;
+				break;
+			default:
+				console.log("Doesn't have a year");
+				break;
+		}
+	}
+});
+//organize nodes into years
+for (var property in nodes) {
+    if (nodes.hasOwnProperty(property)) {
+	   if(nodes[property].year2000){
+			nodes[property].visibleOrNot = true;
+			nodesByYear[0][property] = nodes[property];
+	   }
+	   if(nodes[property].year2001){
+		   nodesByYear[1][property] = nodes[property];
+	   }
+	   if(nodes[property].year2002){
+		   nodesByYear[2][property] = nodes[property];
+	   }
+	   if(nodes[property].year2003){
+		   nodesByYear[3][property] = nodes[property];
+	   }
+	   if(nodes[property].year2004){
+		   nodesByYear[4][property] = nodes[property];
+	   }
+	   if(nodes[property].year2005){
+		   nodesByYear[5][property] = nodes[property];
+	   }
+	   if(nodes[property].year2006){
+		   nodesByYear[6][property] = nodes[property];
+	   }
+	   if(nodes[property].year2007){
+		   nodesByYear[7][property] = nodes[property];
+	   }
+	   if(nodes[property].year2008){
+		   nodesByYear[8][property] = nodes[property];
+	   }
+	   if(nodes[property].year2009){
+		   nodesByYear[9][property] = nodes[property];
+	   }
+	   if(nodes[property].year2010){
+		   nodesByYear[10][property] = nodes[property];
+	   }
+	   if(nodes[property].year2011){
+		   nodesByYear[11][property] = nodes[property];
+	   }
+	   if(nodes[property].year2012){
+		   nodesByYear[12][property] = nodes[property];
+	   }
+	   if(nodes[property].year2013){
+		   nodesByYear[13][property] = nodes[property];
+	   }
+	   if(nodes[property].year2014){
+		   nodesByYear[14][property] = nodes[property];
+	   }
+    }
+}
+
+
+
+var rangesPerYear = [[[5,7],[0, 5],[0, 35]], [], [],[],[],[],[],[],[],[],[],[],[],[],[]];
+//RANGE OF: 50-360
+// setup y axis in scatterplot
+var yValue = function(d) { return d["hindex"];}, // data -> value
+yScale = d3.scale.linear().range([height - 10, 50]), // value -> display
+yMap = function(d) {return ((yValue(d))*-(310/50)) + 360;}, // data -> display
+yAxis = d3.svg.axis()
+	.scale(yScale)
+	.ticks(5)
+	.tickFormat(function (d) {
+		return (d*50);
+	})
+	.orient("left");
+
+secondSVG.append("g")
+	  .attr("class", "y axis")
+	  .call(yAxis)
+	.append("text")
+	  .attr("class", "label")
+	  .attr("transform", "rotate(-90)")
+	  .attr("x", -50)
+	  .attr("y", 6)
+	  .attr("dy", ".71em")
+	  .style("text-anchor", "end")
+	  .text("h-Index");
+
+// RANGE OF: 1-970	  
+// setup x axis in scatterplot
+var xValue = function(d) { return d["dindex"];}, // data -> value
+xScale = d3.scale.linear().range([0, width-80]), // value -> display
+xMap = function(d) {return ((969/450)*(xValue(d))) + 1;}, // data -> display
+xAxis = d3.svg.axis()
+	.scale(xScale)
+	.ticks(7)
+	.tickFormat(function (d) {
+		return ((d * 450));
+	})
+	.orient("bottom");
+
+// x-axis
+secondSVG.append("g")
+  .attr("class", "x axis")
+  .attr("transform", "translate(0," + (height - 9.3) + ")")
+  .call(xAxis)
+.append("text")
+  .attr("class", "label")
+  .attr("x", width -83)
+  .attr("y", -6)
+  .style("text-anchor", "end")
+  .text("Collaboration Level (CL)");
+  
+
+//UPDATE FUNCTION 
+function update(force, tick){
+    //FILTER NETWORK
+	var fl = d3.values(nodesByYear[YEAR - 2000]).filter(function(d, i){
+		
+		var x = d.pubs;
+		var h = d.hindex;
+		var collab = d.dindex;
+		var visibleLinks = x.length;
+		var i = 0;
+		var passedHINDEX = false;
+		var passedDINDEX = false;
+		var passedLINKS = false;
+		if(hindexGreaterThan == 1) {
+			//means >= number
+			if(h >= hindexNumber) {
+				passedHINDEX = true;
+			}else{
+				passedHINDEX = false;
+			}
+		} else {
+			//means <= number
+			if(h <= hindexNumber) {
+				passedHINDEX = true;
+			}else{
+				passedHINDEX = false;
+			}
+		}
+		if(collabGreaterThan == 1) {
+			//means >= number
+			if(collab >= collabNumber) {
+				passedDINDEX = true;
+			}else{
+				passedDINDEX = false;
+			}
+		} else {
+			//means <= number
+			if(collab <= collabNumber) {
+				passedDINDEX = true;
+			}else{
+				passedDINDEX = false;
+			}
+		}
+		x.forEach(function(d){
+			var publication = +d["year"];
+			if(publication != YEAR) {	
+				visibleLinks--;	
+			}
+		});
+		if(visibleLinks > 0){
+			passedLINKS = true;
+		} else {
+			passedLINKS = false;
+		}
+		if(passedHINDEX && passedDINDEX && passedLINKS){
+			d.visibleOrNot = true;
+			return d;
+		} else {
+			d.visibleOrNot = false;
+		}
+	});
+	//FILTER LINKS
+	var nl = linksByYear[YEAR - 2000].filter(function(d,i){
+		var date = d["Year"];
+		var passedYear = false;
+		var passedBOTHPRESENT = false;
+		if(date == YEAR){
+				passedYear = true;
+			} else {
+				passedYear = false;
+			}
+		var sour = d["source"]["visibleOrNot"];
+		var tar = d["target"]["visibleOrNot"];
+		if((sour) && (tar)){
+			passedBOTHPRESENT = true;
+		}else {
+			passedBOTHPRESENT = false;
+		}
+		if(passedBOTHPRESENT && passedYear){
+			return d;
+		}
+	});
+if(firstTime){
+secondSVG.selectAll("circle").remove();
+var node = svg.selectAll("g").remove();
+var link = svg.selectAll("line").remove();
+console.log(svg.selectAll("*"));
+console.log(svg.selectAll("*"));
+}
+firstTime = true;
+
+fl.push(d3.values(nodesByYear[0])[0]);
+fl.push(d3.values(nodesByYear[0])[1]);
+
+if(nl.length == 0) {
+nl.push(linksByYear[0][0]);
+}	
+console.log(fl);
+console.log(nl);
+console.log(fl.length);
+if(fl.length != 0){
+	//CREATE FORCE LAYOUT
+var force = d3.layout.force()
+    .nodes(fl)
+    .links(nl)
+    .size([width, height])
+    .linkDistance(70)
+    .charge(-60)
+	.chargeDistance(60)
+	.theta(.3)
+	.gravity(0)
+    .on("tick", tick)
+	.start();
+// add the lines
+//create lines
+var link = svg.selectAll("line")
+    .data(nl)
+  .enter().append("svg:line")
+    .attr("class", "link")
+	.attr("visibility", function(d){
+		if(d.Articles == "FAKE"){
+			return "hidden";
+		}
+		return "visible";
+	})
+	.attr("stroke-width", function(d){ return d["Collab_Total"] + 2;})
+	.attr("x1", function(d) {  return d.source.x; })
+	.attr("y1", function(d) { return d.source.y; })
+	.attr("x2", function(d) { return d.target.x; })
+	.attr("y2", function(d) { return d.target.y; })
+	.on("mouseover", function(d) {
+		tooltip.transition()
+		.duration(200)
+		.style("opacity", .9);
+		tooltip.html(d["Articles"] + "<br/> <br/>Number of times collaborated: " + d["Collab_Total"])
+		.style("left", (d3.event.pageX + 5) + "px")
+		.style("top", (d3.event.pageY - 28) + "px");
+	})
+	.on("mouseout", function(d) {
+		tooltip.transition()
+		.duration(500)
+		.style("opacity", 0);
+	});
+
+var node = svg.selectAll(".node")
+    .data(fl)
+  .enter().append("g")
+    .attr("class", "Node")
+	.call(force.drag());
+// define the nodes for network vis
+node.append("circle")
+	.attr("class", "circ")
+	.attr("visibility", function(d){
+		if((d.name == "NOONE") || (d.name == "NOONEELSE")){
+			return "hidden";
+		}
+		return "visible";
+	})
+	.attr("x", function(d) { 
+		var x = Math.random() * 1050; 
+		if(x > 0){
+				x = Math.min(width - border, x);
+			} else{
+				x = Math.max( border, x);
+			};
+		d["x"] = x;
+		d["px"] = x;
+		return x;
+	})
+	.attr("y", function(d) { 
+		var y = Math.random() * 350;
+		if(y > 0){
+				y = Math.min(height - border, y);
+			}else{
+				y = Math.max(border, y);
+			};
+		d["y"] = y;
+		d["py"] = y;
+		return y;
+	})
+	.style("fill", function(d) { 
+		var letters = '0123456789ABCDEF'.split('');
+		var color = '#';
+		for (var i = 0; i < 6; i++ ) {
+			color += letters[Math.floor(Math.random() * 16)];
+		}
+		return color;})
+    .attr("r", function(d){ return ((d["hindex"]) + 11)/2;})
+	.on("mousedown", function(d, index) {
+		//PUT AUTHOR AND HINDEX OVER BOTTOM RIGHT BOX
+		document.getElementById('author').innerHTML = (d["name"]);
+		document.getElementById('index').innerHTML = (d["hindex"]);
+		//FIRST REMOVE ANYTHING OLD IN BOX
+		d3.select(".viewport").selectAll("*").remove();
+		//IF A NODE IS CLICKED UPLOAD TO BOX ON BOTTOM RIGHT
+		showPublications(d.pubs);
+		//ADD LINKED VIEW
+		secondSVG.selectAll("circle").filter(function(er, i) {return er["name"] != d3.event.toElement.__data__["name"]}).transition().duration(200).style("opacity", 0.2);
+		svg.selectAll("g").filter(function(d, i) { return d["name"] != d3.event.toElement.__data__["name"]}).transition().duration(200).style("opacity", 0.2);
+	})
+	.on("mouseout", function(data, index) {
+		secondSVG.selectAll("circle").transition().duration(200).style("opacity", 1.0);
+		svg.selectAll("g").transition().duration(200).style("opacity", 1.0);
+	});
+console.log(node[0]);
+console.log(link[0]);
+	if(nl.length != 0){
+function tick() {
+	svg.selectAll("g").attr("transform", function(d) {
+		if(d.visibleOrNot == true){
+			if(d.x > 0){
+				d.x = Math.min(width - border, d.x);
+			} else{
+				d.x = Math.max( border, d.x);
+			}
+			if(d.y > 0){
+				d.y = Math.min(height - border, d.y);
+			}else{
+				d.y = Math.max(border, d.y);
+			}
+            return ("translate(" + d.x + "," + d.y + ")");
+			}else{
+				return ("translate(50, 50)")
+			}
+		})
+	if(nl.length != 0){
+    svg.selectAll("line").attr("x1", function(d) {if(d.source.visibleOrNot == true){ return d.source.x;}else{return 50;} })
+        .attr("y1", function(d) {if(d.source.visibleOrNot == true){ return d.source.y;}else{return 50;} })
+        .attr("x2", function(d) {if(d.target.visibleOrNot == true){ return d.target.x;}else{return 50;} })
+        .attr("y2", function(d) {if(d.target.visibleOrNot == true){ return d.target.y;}else{return 50;} });
+	}
+
+}
+debugger;
+}
+//redraw scatterplot
+
+var node2 = secondSVG.selectAll(".dot")
+    .data(fl)
+  .enter().append("g")
+    .attr("class", "Node");
+
+// add the nodes
+node2.append("circle")
+	.attr("class", "dots")
+	.style("fill", function(d) { 
+		var letters = '0123456789ABCDEF'.split('');
+		var color = '#';
+		for (var i = 0; i < 6; i++ ) {
+			color += letters[Math.floor(Math.random() * 16)];
+		}
+		return color;})
+	.attr("cx", xMap)
+	.attr("cy", yMap)
+    .attr("r", function(d){ return ((d["pubNum"]) + 7)/2;})
+	.on("mouseover", function(data, index) {
+		//POPULATE BOTTOM RIGHT BOX
+		document.getElementById('author').innerHTML = (data["name"]);
+		document.getElementById('index').innerHTML = (data["hindex"]);
+		d3.select(".viewport").selectAll("*").remove();
+		showPublications(data.pubs);
+		//LINKED VIEW
+		secondSVG.selectAll("circle").filter(function(d, i) {  return d["name"] != d3.event.toElement.__data__["name"]}).transition().duration(200).style("opacity", 0.2);
+		svg.selectAll("g").filter(function(d, i) { return d["name"] != d3.event.toElement.__data__["name"]}).transition().duration(200).style("opacity", 0.2);
+	})
+	.on("mouseout", function(data, index) {
+		secondSVG.selectAll("circle").transition().duration(200).style("opacity", 1.0);
+		svg.selectAll("g").transition().duration(200).style("opacity", 1.0);
+	});
+}
+
+}
+update();
+//draw time slider update info
+d3.select('#slider').call(d3.slider().axis(true).value(2000).min(2000).max(2014).step(1).on("slide", function(evt, value){
+	YEAR = value;
+	update();
+}));
+
+//TRANSPOSE BUTTON UPDATE INFO
+var transpose = document.getElementById("updateButton").addEventListener("mousedown", function(d){
+	var e = document.getElementById("collabinput");
+	var f = document.getElementById("hindexinput");
+	var g = document.getElementById("collabNum");
+	var h = document.getElementById("hindexNum");
+	if((g.value != "") &&(h.value != "")) {
+		collabGreaterThan = e.options[e.selectedIndex].value;
+		hindexGreaterThan = f.options[f.selectedIndex].value;
+		collabNumber = g.value;
+		hindexNumber = h.value;
+	} else {
+		alert("You entered an unacceptable number value for Collaboration Level or h-Index. Try again.");
+	}
+	update();
+});
+
+//SHOW PUBLICATIONS IN SECONDVIEWPOINT BOTTOM RIGHT
+var showPublications = function(list){
+	var colorScale2 = d3.scale.category10();
+	var scrollSVG2 = d3.select(".viewport").append("svg")
+		.attr("class", "scroll-svg")
+		.attr("id", "secondOne");
+	var defs2 = scrollSVG2.insert("defs", ":first-child");
+
+	var chartGroup2 = scrollSVG2.append("g")
+		.attr("class", "chartGroup")
+
+	chartGroup2.append("rect")
+		.attr("fill", "#FFFFFF");
+		
+	var rowEnter2 = function(rowSelection) {
+		rowSelection.append("rect")
+			.attr("rx", 3)
+			.attr("ry", 3)
+			.attr("width", "500")
+			.attr("height", "24")
+			.attr("fill-opacity", 0)
+			.attr("stroke", "#999999")
+			.attr("stroke-width", "0px");
+		rowSelection.append("text")
+			.attr("transform", "translate(10,15)")
+			.on("click", function(d) {})
+	};
+	var rowUpdate2 = function(rowSelection) {
+		rowSelection.select("rect")
+			.attr("fill", function(d) {
+				return colorScale2(d.id);
+			});
+		rowSelection.select("text")
+			.text(function (d) {
+				return d;
+			});
+	};
+	var rowExit2 = function(rowSelection){
+	}
+	// tack on index to each data item for easy to read display
+	var Title = [];
+	var max = 1;
+	list.map(function(d){
+		var str = d.title + " (Number of Citations: " +d.numCitations + ")";
+		var howMany = Math.ceil(str.length / 45);
+		if(max < howMany){
+			max = howMany;
+		}
+		var i = 0;
+		var x = 0;
+		var y = 45;
+		for(i; i<howMany; i++){
+			var part = str.slice(x,y);
+			var end = str.charAt(y);
+			if(end != ' ' && (i != (howMany - 1))){
+				part = part + '-';
+			}
+			Title.push(part);
+			x = x + 45;
+			y = y + 45;
+		}
+		Title.push("");
+	})	
+	Title.forEach(function(nextState, i) {
+		nextState.index = i;
+	});
+	Title.forEach(function(nextState, i) {
+		nextState.id = nextState;
+	});
+	var virtualScroller2 = d3.VirtualScroller()
+		.rowHeight(15)
+		.enter(rowEnter2)
+		.update(rowUpdate2)
+		.exit(rowExit2)
+		.svg(scrollSVG2)
+		.totalRows(Title.length * (max + 2))
+		.viewport(d3.select(".viewport"));
+	virtualScroller2.data(Title);
+	chartGroup2.call(virtualScroller2);
+};
+
+//PLAY BUTTON GO THROUGH THE YEARS
+document.getElementById("playButton").addEventListener("mousedown", function goThroughYears() {
+	var theButton = document.getElementById("playButton");
+	var currentPic = (theButton.src.substring(theButton.src.length -10,theButton.src.length));
+
+	if(currentPic == "submit.jpg"){
+		theButton.src = "paused.jpg";
+		YEAR = 2000;
+		update();
+	var myVar = setInterval(function(){
+			YEAR++;
+			update();
+			if((YEAR + 1) == 2015){
+				myStopFunction();
+			}
+		}, 4000);
+	function myStopFunction() {
+		clearInterval(myVar);
+		YEAR = 2000;
+		setTimeout(function(){
+			theButton.src = "submit.jpg";
+		}, 2000);
+	}
+	} else {
+		myStopFunction();
+	}
+});
+//close the csv for both of them
+});
+});
+
+</script>
+</body>
+</html>

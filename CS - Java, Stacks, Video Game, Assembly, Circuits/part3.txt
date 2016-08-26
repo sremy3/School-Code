@@ -1,0 +1,18 @@
+Stephanie Remy
+GTID: 902776472
+Jan 14, 2016
+
+1) What is the purpose of a splitter/joiner?
+
+-The purpose of a splitter/joiner is to allow the access of multiple bit inputs. Like in part two, we wished for each bit to go to a different gate and to go different directions, and the splitters allowed us to do this. It can connect different wires, and the bit and bit width will determine how what is going through the input pin and what is coming out.
+
+2) Why are tunnels useful?
+
+-Tunnels are useful to connect and organize the circuits. It can help flowing one side of a circuit through an imaginary wire to a different part of the circuit, and thus keep the circuit 
+
+3) What is the output of your circuit when you give an input of 010? How about an input of 100?
+
+-gives an output of 0 if input is 010
+-gives an output of 1 if input is 100
+
+4) Uploaded the picture to Canvas.
